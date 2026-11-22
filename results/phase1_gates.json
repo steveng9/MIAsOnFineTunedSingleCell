@@ -1,0 +1,22 @@
+{
+  "null": {
+    "aucs_mean_agg": [
+      0.46879999999999994,
+      0.46760000000000007
+    ],
+    "null_sd": 0.058022983951764036,
+    "passed": true
+  },
+  "positive": {
+    "auc_seen_calibrated_mean": 1.0,
+    "passed": true
+  },
+  "shuffle": {
+    "mean_auc": 0.50451,
+    "sd": 0.13344946571642766,
+    "passed": true
+  },
+  "leakage": {
+    "passed": true
+  }
+}

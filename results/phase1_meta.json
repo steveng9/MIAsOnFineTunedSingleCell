@@ -1,0 +1,16 @@
+{
+  "python": "3.10.22",
+  "torch": "2.14.1+cu130",
+  "transformers": "5.20.2",
+  "peft": "0.21.3",
+  "anndata": "0.11.4",
+  "numpy": "2.2.6",
+  "model_revision": "1f7fbae4e469a5f4f1af8c111a529cfe1b3829f5",
+  "model_version": "V1-10M",
+  "seed": 0,
+  "mask_seed": 1234,
+  "mask_frac": 0.15,
+  "n_masks": 3,
+  "cell_cap": 200,
+  "dataset": "aida"
+}

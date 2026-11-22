@@ -2,7 +2,7 @@
 
 When a single-cell foundation model is fine-tuned on a small donor cohort, does it memorize those donors? This project measures how that changes with the number and shape of the trained parameters, and compares fine-tuning with in-context learning, where no weights change.
 
-**Status:** Phase 0 (setup and data audit) in progress. There are no results yet.
+**Status:** Phase 1 pilot complete on AIDA (one trial, preliminary). See [RESULTS.md](RESULTS.md). Later phases await review.
 
 ## Design
 

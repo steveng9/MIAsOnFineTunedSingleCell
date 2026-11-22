@@ -48,3 +48,11 @@ Running teaching notes, written as the work happens.
 - **Positive control:** AIDA 10d, all weights, 30 epochs, lr 5e-4, no early stopping.
 - **Pilot:** AIDA 50d, all weights, lr 1e-4, up to 10 epochs, early stopping on auxiliary donors outside train and holdout.
 - **Null-spread reference:** with 50 vs 50 donors, the null AUC standard deviation is about 0.058.
+
+### Phase 1 outcome
+- **Gate:** null, positive, shuffle, and leakage checks passed. Numbers are in `RESULTS.md`.
+- **Surprise 1:** the 50-donor model separates seen cells almost perfectly (calibrated AUC 0.975), yet unseen cells from those donors give 0.453. Here it looks like cell memorization, not donor memorization, which is the opposite of the scMAMA-MIA generator pattern. One trial only.
+- **Surprise 2:** calibration matters a lot for seen cells (raw 0.649, calibrated 0.975). Subtracting the base loss removes how hard each cell is to predict.
+- **Worth showing Steven:** in the positive control, train loss fell from 2.664 to 2.491 while validation loss stayed near 2.59. A small loss gap was enough for AUC 1.0 on seen cells.
+- **What broke:** PyTorch logged 4 allocator OOM retries during the first evaluation at batch size 24, with GPU memory full of cached blocks. The run recovered with no errors. Lower `EVAL_BATCH` before sweeps.
+- **Control weakness found:** the calibrated attack is exactly zero on the base model, so its null is untested. Next control: fine-tune, then attack two disjoint groups of non-members.
