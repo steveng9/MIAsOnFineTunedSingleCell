@@ -56,3 +56,19 @@ Running teaching notes, written as the work happens.
 - **Worth showing Steven:** in the positive control, train loss fell from 2.664 to 2.491 while validation loss stayed near 2.59. A small loss gap was enough for AUC 1.0 on seen cells.
 - **What broke:** PyTorch logged 4 allocator OOM retries during the first evaluation at batch size 24, with GPU memory full of cached blocks. The run recovered with no errors. Lower `EVAL_BATCH` before sweeps.
 - **Control weakness found:** the calibrated attack is exactly zero on the base model, so its null is untested. Next control: fine-tune, then attack two disjoint groups of non-members.
+
+## Phases 2 and 3: freezing and LoRA sweeps (`scripts/run_sweep.py`)
+
+### Decisions after the Phase 1 check-in
+- Steven approved proceeding, mapping OneK1K to Ensembl, adding a real calibrated null, and raising the epoch cap.
+- **OneK1K mapping (`scripts/audit_ok_mapping.py`):** 16,006 symbols map one-to-one, with no duplicate Ensembl IDs, covering 89.49% of counts. MALAT1 (6.67% of counts) is the largest loss and is absent from the V1 vocabulary. Old symbols such as GNB2L1 and H3F3B are also lost.
+- **Calibrated null:** fine-tune all weights on up to 20 unrelated auxiliary donors for 10 epochs, then attack members vs holdout. Neither group was trained on, so AUC should be near 0.5. This replaces the earlier idea of splitting holdout in two, because it exercises the whole training pipeline.
+- **Training:** up to 30 epochs, patience 3, on auxiliary-donor validation loss.
+- **Learning rates:** 1e-4 for frozen and full configs, 1e-3 for LoRA, since the adapters start from zero. These were not tuned, so the LoRA and non-LoRA curves differ in learning rate as well as parameter count.
+
+### LoRA (`src/lora.py`, `scripts/test_lora.py`)
+- **Shapes in one Geneformer layer:** query, key, value, and attention output are `(256, 256)`. Intermediate is `(512, 256)`, output is `(256, 512)`.
+- **Parameter count:** each layer has `4r(512) + 2r(768) = 3584r`. Six layers give `21,504r`, so r=64 trains 1,376,256 parameters (13.38% of the model).
+- **Tests passed:** at every rank, outputs before training exactly equal the base model, counts match `r(m+n)`, and outputs match PEFT when both hold the same nonzero adapters.
+- **Worth showing Steven:** with B=0, the first gradient for A is exactly zero, because `d(BA)/dA` is scaled by B. B has to move first.
+- **Head config:** the decoder weight is tied to the gene embeddings, so "head only" trains the transform and bias (91,730 parameters) and leaves the embeddings frozen.
