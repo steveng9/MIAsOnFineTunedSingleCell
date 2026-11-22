@@ -1,0 +1,30 @@
+# Cell-level data and donor information must never be committed
+*.h5ad
+*.npy
+*.npz
+*.parquet
+*.arrow
+*.loom
+data/
+tokenized/
+cell_sentences/
+
+# Models and checkpoints
+checkpoints/
+models/
+external/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+
+# Logs and runtime
+logs/*
+!logs/.gitkeep
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.claude/
+.env
+wandb/
