@@ -166,7 +166,7 @@ def run_config(data, c, base_loss, config, rank, csv, smoke, fit_ids=None, label
     return rows
 
 
-def sweep(name, nd, trial, csv, smoke):
+def sweep(name, nd, trial, csv, smoke, freeze_configs, ranks):
     data = Data(name)
 
     pos = Cohort(data, 10, trial, smoke)
@@ -197,9 +197,9 @@ def sweep(name, nd, trial, csv, smoke):
         if not smoke and any(abs(a - 0.5) > 2 * sd for a in aucs.values()):
             sys.exit(f"CALIBRATED NULL FAILED for {name}: {aucs}")
 
-    for config in FREEZE_CONFIGS:
+    for config in freeze_configs:
         run_config(data, c, base_loss, config, None, csv, smoke)
-    for r in ([2] if smoke else RANKS):
+    for r in ([2] if smoke else ranks):
         run_config(data, c, base_loss, "lora", r, csv, smoke)
     data.adata.file.close()
     print(f"SWEEP COMPLETE {name} {nd}d trial {trial}", flush=True)
@@ -210,6 +210,8 @@ def main():
     ap.add_argument("--datasets", nargs="+", default=["ok", "aida"])
     ap.add_argument("--nd", type=int, default=50)
     ap.add_argument("--trial", type=int, default=1)
+    ap.add_argument("--freeze", nargs="*", default=FREEZE_CONFIGS)
+    ap.add_argument("--ranks", nargs="*", type=int, default=RANKS)
     ap.add_argument("--smoke", action="store_true")
     args = ap.parse_args()
     csv = f"{REPO}/logs/smoke_sweep.csv" if args.smoke else f"{REPO}/results/metrics.csv"
@@ -222,10 +224,11 @@ def main():
                    "anndata": ad.__version__, "numpy": np.__version__, "model_revision": MODEL_REVISION,
                    "seed": SEED, "mask_seed": p1.MASK_SEED, "mask_frac": p1.MASK_FRAC, "n_masks": p1.N_MASKS,
                    "cell_cap": p1.CELL_CAP, "lr": LR, "max_epochs": MAX_EPOCHS, "patience": PATIENCE,
-                   "null_epochs": NULL_EPOCHS, "ranks": RANKS, "freeze_configs": FREEZE_CONFIGS},
-                  open(f"{REPO}/results/sweep_meta.json", "w"), indent=2)
+                   "null_epochs": NULL_EPOCHS, "ranks": args.ranks, "freeze_configs": args.freeze,
+                   "datasets": args.datasets, "nd": args.nd, "trial": args.trial},
+                  open(f"{REPO}/results/sweep_meta_{args.nd}d_t{args.trial}.json", "w"), indent=2)
     for name in args.datasets:
-        sweep(name, args.nd, args.trial, csv, args.smoke)
+        sweep(name, args.nd, args.trial, csv, args.smoke, args.freeze, args.ranks)
     print("ALL SWEEPS COMPLETE", flush=True)
 
 

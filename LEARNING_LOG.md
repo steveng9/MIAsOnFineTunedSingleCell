@@ -72,3 +72,10 @@ Running teaching notes, written as the work happens.
 - **Tests passed:** at every rank, outputs before training exactly equal the base model, counts match `r(m+n)`, and outputs match PEFT when both hold the same nonzero adapters.
 - **Worth showing Steven:** with B=0, the first gradient for A is exactly zero, because `d(BA)/dA` is scaled by B. B has to move first.
 - **Head config:** the decoder weight is tied to the gene embeddings, so "head only" trains the transform and bias (91,730 parameters) and leaves the embeddings frozen.
+
+### Sweep outcome (50 donors, trial 1)
+- **Gates:** OneK1K positive control 1.000 (seen). Calibrated null: OneK1K 0.524 / 0.505, AIDA 0.418 / 0.406 (seen / unseen).
+- **Surprise 1:** seen-cell AUC climbs smoothly with log parameters, but unseen-cell AUC is flat. Ask Steven to predict this before showing the figure.
+- **Surprise 2:** AIDA unseen AUCs are all about 0.42-0.445, and a model trained on unrelated donors gets 0.406. A consistent below-chance value across configs is a split effect, and it is a good example for "how do you know your attack isn't picking up batch effects?"
+- **Surprise 3:** LoRA r=64 had worse holdout loss than r=32 in both datasets, and LoRA was worse than head-only on OneK1K at every rank. The learning-rate difference may explain this, so don't teach it as a LoRA property yet.
+- **Next:** replicate at 50 donors over trials 2-5 with `head`, `last2`, `full`, LoRA r=8 and r=64. The whole Phase 4 grid at the current cost would be well over 24 hours, so that needs Steven's decision.
