@@ -98,3 +98,9 @@ Running teaching notes, written as the work happens.
 - **Correction to an earlier assumption:** a random donor split balances batch only in expectation. Any one split can be imbalanced, so a single-trial AUC can look like leakage.
 - **Still open:** trial 1 stays low within country (0.396 unseen, z = -1.66), which is within chance. OneK1K batch structure is unchecked.
 - **Useful for Phase 4:** per-cell scores are saved, so within-country AUCs can be computed afterward without retraining.
+
+### Phase 4 relaunch (2026-11-23)
+- **Decision:** Steven approved launching with within-country AUC as AIDA's primary metric, reporting pooled AUC alongside it. Training is unchanged.
+- **OneK1K batch check:** the metadata has no batch column, but the barcode suffix has 75 values. 980 of 981 donors have one suffix, and each suffix covers 9-14 donors. This looks like a sequencing pool, but that is inferred from the structure and not documented in the data.
+- **Next analysis:** test whether this suffix explains OneK1K null scores, as country did for AIDA. With 9-14 donors per suffix, within-pool comparisons will have fewer pairs.
+- **Smoke test:** passed on GPU 1, then the real queue started with the learning-rate check.

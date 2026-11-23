@@ -1,0 +1,55 @@
+{
+  "datasets": [
+    "ok",
+    "aida"
+  ],
+  "donor_counts": [
+    10,
+    20,
+    100,
+    200,
+    50
+  ],
+  "trials": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "freeze": [
+    "head",
+    "last2",
+    "full"
+  ],
+  "ranks": [
+    8,
+    64
+  ],
+  "default_lr": {
+    "lora": 0.001,
+    "default": 0.0001
+  },
+  "lr_check": {
+    "nd": 50,
+    "trials": [
+      1,
+      2
+    ],
+    "grid": {
+      "freeze": [
+        0.0003,
+        0.001
+      ],
+      "lora": [
+        0.0001,
+        0.0003
+      ]
+    }
+  },
+  "max_epochs": 30,
+  "patience": 3,
+  "null_stop_sds": 4,
+  "seed": 0,
+  "model_revision": "1f7fbae4e469a5f4f1af8c111a529cfe1b3829f5"
+}
