@@ -1,0 +1,137 @@
+{
+  "pooled": {
+    "null_sd": 0.058022983951764036,
+    "seen_cells": {
+      "n_cohorts": 8,
+      "aucs": [
+        0.4184,
+        0.4856,
+        0.4196,
+        0.6292,
+        0.5244,
+        0.5812,
+        0.4656,
+        0.414
+      ],
+      "mean_auc": 0.49224999999999997,
+      "empirical_sd": 0.08045440589906454,
+      "max_abs_z": 2.226703819772647,
+      "chi2": 13.601251485148518,
+      "chi2_p": 0.0927691686465996,
+      "mean_test_p": 0.7055890727817378,
+      "p_any_beyond_2sd_by_chance": 0.3110201807698204
+    },
+    "same_donor_unseen_cells": {
+      "n_cohorts": 8,
+      "aucs": [
+        0.4056,
+        0.474,
+        0.414,
+        0.63,
+        0.5052,
+        0.5536,
+        0.4684,
+        0.3848
+      ],
+      "mean_auc": 0.47945000000000004,
+      "empirical_sd": 0.08252665370308294,
+      "max_abs_z": 2.240491459523562,
+      "chi2": 15.164245544554461,
+      "chi2_p": 0.05602939671672055,
+      "mean_test_p": 0.31646723846691793,
+      "p_any_beyond_2sd_by_chance": 0.3110201807698204
+    }
+  },
+  "seeds": {
+    "0": {
+      "seen_cells": 0.6284,
+      "same_donor_unseen_cells": 0.6292
+    },
+    "1": {
+      "seen_cells": 0.614,
+      "same_donor_unseen_cells": 0.6304
+    },
+    "2": {
+      "seen_cells": 0.6199999999999999,
+      "same_donor_unseen_cells": 0.6216
+    }
+  },
+  "donor_score_spearman_across_seeds": {
+    "0_1": 0.987950795079508,
+    "0_2": 0.9872667266726672,
+    "1_2": 0.9914191419141914
+  },
+  "covariates": {
+    "Country": {
+      "score_kruskal_p": 3.613500726681386e-14,
+      "score_r2": 0.7648342797446683,
+      "membership_imbalance_p": 0.08263018262761512,
+      "group_counts": {
+        "Japan": [
+          12,
+          22
+        ],
+        "Singapore": [
+          21,
+          18
+        ],
+        "South_Korea": [
+          17,
+          10
+        ]
+      }
+    },
+    "sex": {
+      "score_kruskal_p": 0.22090333367898848,
+      "score_r2": 0.015691369862328886,
+      "membership_imbalance_p": 0.8409776633987525,
+      "group_counts": {
+        "female": [
+          26,
+          28
+        ],
+        "male": [
+          24,
+          22
+        ]
+      }
+    },
+    "ethnicity": {
+      "score_kruskal_p": 4.841799471578524e-13,
+      "score_r2": 0.7717056490478256,
+      "membership_imbalance_p": 0.24263637545885983,
+      "group_counts": {
+        "Japanese": [
+          12,
+          22
+        ],
+        "Korean": [
+          17,
+          10
+        ],
+        "Singaporean Chinese": [
+          11,
+          9
+        ],
+        "Singaporean Malay": [
+          6,
+          4
+        ],
+        "Singaporean Indian": [
+          4,
+          5
+        ]
+      }
+    },
+    "mean_umis": {
+      "score_spearman": -0.006168616861686168,
+      "score_p": 0.9514299364988822,
+      "membership_auc": 0.46
+    },
+    "mean_tokens": {
+      "score_spearman": -0.21209720972097207,
+      "score_p": 0.03413512631462796,
+      "membership_auc": 0.4152
+    }
+  }
+}

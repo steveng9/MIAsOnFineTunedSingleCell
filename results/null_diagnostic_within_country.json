@@ -1,0 +1,102 @@
+{
+  "rows": [
+    {
+      "trial": 1,
+      "threat_model": "seen_cells",
+      "pooled_auc": 0.4196,
+      "within_country_auc": 0.4201388888888889,
+      "perm_mean": 0.4985995370370371,
+      "perm_sd": 0.06172974547616233,
+      "z": -1.2710346939377337,
+      "perm_p": 0.2028985507246377
+    },
+    {
+      "trial": 1,
+      "threat_model": "same_donor_unseen_cells",
+      "pooled_auc": 0.4044,
+      "within_country_auc": 0.3958333333333333,
+      "perm_mean": 0.4980538194444444,
+      "perm_sd": 0.06173772175845045,
+      "z": -1.6557217078895443,
+      "perm_p": 0.09995002498750624
+    },
+    {
+      "trial": 2,
+      "threat_model": "seen_cells",
+      "pooled_auc": 0.4856,
+      "within_country_auc": 0.5275779376498801,
+      "perm_mean": 0.4986810551558753,
+      "perm_sd": 0.05893966577773346,
+      "z": 0.49027903556456315,
+      "perm_p": 0.6241879060469765
+    },
+    {
+      "trial": 2,
+      "threat_model": "same_donor_unseen_cells",
+      "pooled_auc": 0.4724,
+      "within_country_auc": 0.4940047961630695,
+      "perm_mean": 0.4982541966426859,
+      "perm_sd": 0.05930783464443245,
+      "z": -0.07164990098007692,
+      "perm_p": 0.9500249875062469
+    },
+    {
+      "trial": 3,
+      "threat_model": "seen_cells",
+      "pooled_auc": 0.4188,
+      "within_country_auc": 0.508557457212714,
+      "perm_mean": 0.5010806845965771,
+      "perm_sd": 0.06006415589511745,
+      "z": 0.12447977507904448,
+      "perm_p": 0.9055472263868066
+    },
+    {
+      "trial": 3,
+      "threat_model": "same_donor_unseen_cells",
+      "pooled_auc": 0.4148,
+      "within_country_auc": 0.5073349633251834,
+      "perm_mean": 0.5012292176039119,
+      "perm_sd": 0.06004728288788217,
+      "z": 0.10168229814281232,
+      "perm_p": 0.927536231884058
+    },
+    {
+      "trial": 4,
+      "threat_model": "seen_cells",
+      "pooled_auc": 0.6288,
+      "within_country_auc": 0.5369458128078818,
+      "perm_mean": 0.5010862068965517,
+      "perm_sd": 0.05971062734093191,
+      "z": 0.6005565090880925,
+      "perm_p": 0.5582208895552224
+    },
+    {
+      "trial": 4,
+      "threat_model": "same_donor_unseen_cells",
+      "pooled_auc": 0.6304,
+      "within_country_auc": 0.5357142857142857,
+      "perm_mean": 0.5015991379310344,
+      "perm_sd": 0.05989747470082767,
+      "z": 0.5695590332254842,
+      "perm_p": 0.5807096451774113
+    }
+  ],
+  "summary": [
+    {
+      "threat_model": "same_donor_unseen_cells",
+      "pooled_mean": 0.4805,
+      "pooled_sd": 0.1043125431895257,
+      "within_mean": 0.483221844633968,
+      "within_sd": 0.06080000771548026,
+      "max_abs_z": 1.6557217078895443
+    },
+    {
+      "threat_model": "seen_cells",
+      "pooled_mean": 0.48819999999999997,
+      "pooled_sd": 0.09882212977533592,
+      "within_mean": 0.4983050241398412,
+      "within_sd": 0.05343242179999674,
+      "max_abs_z": 1.2710346939377337
+    }
+  ]
+}

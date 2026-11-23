@@ -70,3 +70,22 @@ Masked-gene cross-entropy on the 50 holdout donors fell from 2.605 (base) to 2.5
 - All configs within a dataset share one donor split, so their AUCs are not independent. Agreement across configs is not replication.
 - AIDA's unseen-cell AUCs sit at 0.416-0.445 for every config, and its unrelated-donor null is 0.406. A model that never saw either group gives the same below-chance value, so this looks like a property of this donor split rather than an effect of training. More trials are needed to confirm that.
 - Because of that offset, AIDA AUCs should be read against its null line as well as against 0.5.
+
+## Calibrated-null failure and diagnosis
+
+The replicate queue stopped at AIDA 50 donors, trial 4, because the calibrated null reached AUC 0.629 (seen) and 0.630 (unseen), past the 2 SD gate. Trial 4 for AIDA is incomplete, and trial 5 has not run for either dataset. Sources: `results/null_diagnostic_aida_50d_t4.json` and `results/null_diagnostic_within_country.json`.
+
+- **Not training noise:** retraining that null with 3 seeds gave unseen-cell AUCs of 0.622-0.630, and donor scores correlated at Spearman 0.987-0.991 across seeds.
+- **Country confound:** country explains 76.5% of the variance in donor null scores in that trial. Members included 22 Japanese donors and holdout 12. That imbalance is not itself significant (p = 0.083).
+- **Across 8 null cohorts:** mean AUC is 0.492 (seen) and 0.479 (unseen). The chi-square test against the theoretical null gives p = 0.093 and p = 0.056, so the evidence for excess spread is suggestive and not conclusive.
+
+Comparing only member-holdout donor pairs from the same country, for AIDA trials 1-4 (a fresh null run per trial):
+
+| Threat model | Pooled mean | Pooled SD | Within-country mean | Within-country SD | Largest within-country z |
+|---|---|---|---|---|---|
+| Seen cells | 0.488 | 0.099 | 0.498 | 0.053 | 1.27 |
+| Same donor, unseen cells | 0.481 | 0.104 | 0.483 | 0.061 | 1.66 |
+
+Trial 4 moves from 0.629 to 0.537 (seen) and from 0.630 to 0.536 (unseen).
+
+**Reading:** on AIDA, the pooled calibrated attack partly measures which country a donor comes from. Within-country scoring removes the failed null and brings the spread close to the permutation SD of about 0.06. Pooled AIDA AUCs from single trials, including the unseen-cell values above, should not be read as evidence for or against donor leakage. OneK1K has not been checked for an equivalent batch effect.

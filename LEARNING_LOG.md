@@ -88,3 +88,13 @@ Running teaching notes, written as the work happens.
 - **Why save per-cell scores:** per-cell-type and AIDA subgroup analyses need cell-level losses. They go to `scores/`, which is not committed.
 - **Disk:** Phase 4 keeps LoRA adapters but no full checkpoints.
 - **Not in this queue:** objective O2 (cell-type head), per-cell-type and subgroup analysis, Phases 5 and 6.
+
+### Debugging the failed calibrated null (`scripts/diagnose_null.py`, `scripts/diagnose_null_stratified.py`)
+- **What broke:** AIDA 50d trial 4 null hit 0.629, so the replicate queue exited 1 and Phase 4 correctly refused to start (`logs/phase4.exit` = 99).
+- **How it was found:** first the pooled test, then 3 retraining seeds, then donor covariates. Seeds agreed (Spearman about 0.99), so the signal is a stable donor property.
+- **Cause:** country explains 76.5% of donor null-score variance. A model tuned on some donors improves most on donors from similar sites. Trial 4 members had 22 Japanese donors vs 12 in holdout.
+- **Fix tested:** count only same-country member-holdout pairs. Trial 4 fell to 0.537 / 0.536, and the SD across trials fell from about 0.10 to about 0.06.
+- **Best teaching example:** this is the literal answer to "how do you know your attack isn't picking up batch effects?" Ask Steven to predict what a model trained on unrelated donors should score, then show 0.63.
+- **Correction to an earlier assumption:** a random donor split balances batch only in expectation. Any one split can be imbalanced, so a single-trial AUC can look like leakage.
+- **Still open:** trial 1 stays low within country (0.396 unseen, z = -1.66), which is within chance. OneK1K batch structure is unchecked.
+- **Useful for Phase 4:** per-cell scores are saved, so within-country AUCs can be computed afterward without retraining.

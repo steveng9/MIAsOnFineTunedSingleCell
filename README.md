@@ -2,7 +2,7 @@
 
 When a single-cell foundation model is fine-tuned on a small donor cohort, does it memorize those donors? This project measures how that changes with the number and shape of the trained parameters, and compares fine-tuning with in-context learning, where no weights change.
 
-**Status:** Phases 1-3 complete for Geneformer V1 on OneK1K and AIDA at 50 donors (one trial, preliminary). Replicate trials are in progress. See [RESULTS.md](RESULTS.md).
+**Status:** Phases 1-3 complete for Geneformer V1 on OneK1K and AIDA at 50 donors (one trial, preliminary). Replicates stopped on a failed null, traced to a country confound in AIDA. Phase 4 is on hold pending review. See [RESULTS.md](RESULTS.md).
 
 ## Design
 
