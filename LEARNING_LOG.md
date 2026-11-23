@@ -79,3 +79,12 @@ Running teaching notes, written as the work happens.
 - **Surprise 2:** AIDA unseen AUCs are all about 0.42-0.445, and a model trained on unrelated donors gets 0.406. A consistent below-chance value across configs is a split effect, and it is a good example for "how do you know your attack isn't picking up batch effects?"
 - **Surprise 3:** LoRA r=64 had worse holdout loss than r=32 in both datasets, and LoRA was worse than head-only on OneK1K at every rank. The learning-rate difference may explain this, so don't teach it as a LoRA property yet.
 - **Next:** replicate at 50 donors over trials 2-5 with `head`, `last2`, `full`, LoRA r=8 and r=64. The whole Phase 4 grid at the current cost would be well over 24 hours, so that needs Steven's decision.
+
+## Phase 4: donor-count grid (`scripts/run_phase4.py`, `scripts/launch_phase4.sh`)
+- **Approved by Steven:** launch after the replicates, cut to the five configs, and include a small learning-rate check.
+- **Grid:** donor counts {10, 20, 50, 100, 200}, trials 1-5, OneK1K and AIDA. Each cohort runs base, unrelated-donor null, `head`, `last2`, `full`, LoRA r=8 and r=64.
+- **LR check:** 50 donors, trials 1-2. Freezing configs add lr 3e-4 and 1e-3, LoRA adds 1e-4 and 3e-4, so both families share the grid {1e-4, 3e-4, 1e-3}. Any "best lr" must be chosen on auxiliary validation loss, never holdout.
+- **Why the null gate changed:** with dozens of cohorts and two threat models, a 2 SD rule would stop the queue by chance. The queue now stops only beyond 4 null SDs, and the recorded nulls get analyzed across trials afterward.
+- **Why save per-cell scores:** per-cell-type and AIDA subgroup analyses need cell-level losses. They go to `scores/`, which is not committed.
+- **Disk:** Phase 4 keeps LoRA adapters but no full checkpoints.
+- **Not in this queue:** objective O2 (cell-type head), per-cell-type and subgroup analysis, Phases 5 and 6.

@@ -28,3 +28,6 @@ __pycache__/
 .claude/
 .env
 wandb/
+
+# Per-cell attack scores stay local
+scores/
