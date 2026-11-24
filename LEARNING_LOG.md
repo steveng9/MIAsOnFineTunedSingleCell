@@ -104,3 +104,26 @@ Running teaching notes, written as the work happens.
 - **OneK1K batch check:** the metadata has no batch column, but the barcode suffix has 75 values. 980 of 981 donors have one suffix, and each suffix covers 9-14 donors. This looks like a sequencing pool, but that is inferred from the structure and not documented in the data.
 - **Next analysis:** test whether this suffix explains OneK1K null scores, as country did for AIDA. With 9-14 donors per suffix, within-pool comparisons will have fewer pairs.
 - **Smoke test:** passed on GPU 1, then the real queue started with the learning-rate check.
+
+## Phases 5 and 6 setup (2026-11-24)
+- **Steven's instruction:** proceed into the next phases when Phase 4 finishes, without waiting for a go-ahead.
+- **Queue (`scripts/launch_after_phase4.sh`):** Phase 4 analysis, Phase 5, Phase 6, a score backfill, then the analysis again. Each step logs its exit code to `logs/chain.status`, and a failed step doesn't stop the later ones.
+
+### Phase 5 (`scripts/run_phase5.py`)
+- **ICL-A:** a frozen base Geneformer embeds cells (mean of the second-to-last layer). Classification uses 10 nearest neighbours or cell-type prototypes over a support set of member cells.
+- **O2:** a linear cell-type head on the mean-pooled final layer, with head-only, last 2 layers, full, and LoRA r=8.
+- **Support sizes:** k = 1, 5, 10, or 50 cells per type, plus all fit cells. k = 0 has no ICL-A analogue.
+- **Attack:** cross-entropy of the true type. It is calibrated against the same method built on unrelated auxiliary donors, and that reference alone gives a null AUC.
+- **ICL-B dropped:** a 50-gene cell sentence for one example per cell type fills most of the 2,048-4,096-token context of the candidate models (C2S Pythia, OLMo-2). The k = 5 to 50 sweep can't fit, so the protocol's "drop it if it becomes a time sink" rule applies.
+
+### Phase 6: scGPT (`src/scgpt_model.py`, `scripts/test_scgpt.py`, `scripts/run_scgpt.py`)
+- **Checkpoint:** whole-human, 12 layers, width 512, 8 heads, 51.3M parameters, 60,697-gene symbol vocabulary. The source and sha256 are in `scgpt_model.py`.
+- **LoRA pitfall confirmed:** attention stores q, k, and v in one packed `Wqkv` matrix, so it isn't an ordinary `nn.Linear`. The model was reimplemented with separate q/k/v layers, and its outputs match the official `TransformerModel` exactly on real cells. LoRA trains 73,728 parameters per rank.
+- **Surprise:** masked-value prediction on the base model scored worse than a per-cell mean. The checkpoint was pretrained only with the generative objective from the `dev-temp` branch, where genes to predict get a flag embedding instead of a value. O1 for scGPT uses that objective.
+- **Still weak after the fix:** base predictions are nearly constant (SD 1.8 bins vs 14 for the truth, Pearson 0.37). This could be a weak model or an input mismatch with the unpublished pretraining pipeline. One epoch of fine-tuning on 20 cells already drops holdout MSE from 227 to 143, so the "utility" gain from fine-tuning scGPT is mostly recalibration.
+- **Plan:** positive controls, then 50 donors trial 1 with every config, then trials 2-3 with five configs. Expect about a day of runtime.
+- **Gene coverage:** 21,949 OneK1K genes and 23,782 AIDA genes are in the vocabulary.
+
+### Backfill (`scripts/backfill_scores.py`)
+- The pre-Phase 4 runs at 50 donors didn't save per-cell scores, so within-strata AUCs need reruns. Rows go to `logs/backfill_metrics.csv`, and reruns aren't bit-exact.
+- **OneK1K strata caveat:** pools hold about 13 donors, so at 10-20 donors there are only a handful of same-pool pairs. `phase4_summary.csv` reports pair counts.
