@@ -44,6 +44,9 @@ ALL_CONFIGS = [("head", None), ("last1", None), ("last2", None), ("last4", None)
 CORE_CONFIGS = [("head", None), ("last2", None), ("full", None), ("lora", 8), ("lora", 64)]
 TRIAL_PLAN = [(1, ALL_CONFIGS), (2, CORE_CONFIGS), (3, CORE_CONFIGS)]
 NULL_STOP_SDS = 4
+# 5e-4 diverged on OneK1K at epoch 20 (loss 121 -> 203, constant predictions); rows archived in
+# results/metrics_scgpt_positive_lr5e-4.csv. 1e-4 matches the main full fine-tune.
+POSITIVE_LR = 1e-4
 CSV = f"{REPO}/results/metrics_scgpt.csv"
 
 
@@ -224,7 +227,7 @@ def positive_control(data, csv):
     name = data.name
     if not done(csv, name, 10, 1, "full_positive", None):
         c, base = cohort_base(data, 10, 1, False)
-        run_config(data, c, base, "full", None, csv, False, label="full_positive", lr=5e-4,
+        run_config(data, c, base, "full", None, csv, False, label="full_positive", lr=POSITIVE_LR,
                    epochs=MAX_EPOCHS, patience=None)
         del c
     d = pd.read_csv(csv)

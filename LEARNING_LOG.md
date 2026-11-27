@@ -127,3 +127,31 @@ Running teaching notes, written as the work happens.
 ### Backfill (`scripts/backfill_scores.py`)
 - The pre-Phase 4 runs at 50 donors didn't save per-cell scores, so within-strata AUCs need reruns. Rows go to `logs/backfill_metrics.csv`, and reruns aren't bit-exact.
 - **OneK1K strata caveat:** pools hold about 13 donors, so at 10-20 donors there are only a handful of same-pool pairs. `phase4_summary.csv` reports pair counts.
+
+## Chain results and follow-ups (2026-11-27)
+- **The chain ran cleanly:** Phase 4 finished at 04:00 UTC, then Phase 5, Phase 6, the backfill, and the analysis by 19:08, all with exit 0. The results are written up in `RESULTS.md`.
+- **Steven's instruction:** run the follow-ups (scGPT fix, Phase 5 diagnosis, write-up, pretraining check). 3 trials per setting is enough, since this isn't a paper.
+
+### scGPT OneK1K positive control
+- **Failure:** at lr 5e-4 with no early stopping, full fine-tuning diverged at epoch 20. Train loss jumped from 121 to 203 and the model fell back to constant predictions, so seen AUC was 0.5. The gate dropped OneK1K from Phase 6 automatically, which the gate is designed to do.
+- **Fix:** positive controls now use 1e-4, the same as the main full fine-tune. Gradient clipping was already on. Both datasets' controls were rerun, and the old rows are archived in `results/metrics_scgpt_positive_lr5e-4.csv`.
+- **Lesson:** a positive control with a higher learning rate and no early stopping can fail for optimisation reasons. A failure says "training broke", not "nothing leaks". Check the loss curve before concluding anything.
+
+### Phase 5 composition confound
+- **Symptom:** the reference-only null AUC was 0.03-0.2 at small k, when it should be about 0.5.
+- **Cause:** k cells per type over-samples rare types in the members' seen cells. Rare types are harder to classify, so members look worse to any classifier, including the reference.
+- **Fix:** `scripts/analyze_phase5.py` subtracts the per-type mean score before averaging per donor. The reference null is then 0.42-0.58 for k ≥ 50. OneK1K at k ≤ 10 and every k = 1 result stay unreliable.
+- **Lesson:** whenever the member cells are chosen by a different rule than the holdout cells, the per-donor average mixes composition with membership. Score within cell type.
+
+### Pretraining overlap
+- **scGPT:** checked against the CELLxGENE Census LTS `2023-05-15` via `cellxgene_census`, installed in a scratch venv so `scfm_` stays untouched. Every OneK1K and AIDA donor of ours is in it, labelled `normal` and primary. scGPT used the `2023-05-08` weekly build.
+- **Geneformer V1:** probably neither dataset is in its corpus, but this is unverified.
+- **Consequence:** for scGPT, holdouts are already pretraining members, so our AUC measures what fine-tuning adds on top of pretraining.
+
+### Filling to 3 trials (`scripts/fill_trials.py`, `scripts/launch_fill.sh`)
+- **Runs added:** Phase 2-3 sweep configs outside the grid (last1, last4, LoRA r1/2/4/16/32) get trials 2-3, and the LR check gets trial 3. These run on the existing 50-donor cohorts and queue after the scGPT rerun.
+
+### Things learned from Phase 4
+- **LoRA vs freezing:** at equal learning rate, they leak the same for the same parameter budget. The Phase 2-3 "LoRA leaks more" reading was the learning-rate confound.
+- **Head and LoRA utility:** the unrelated-donor null gets most of their utility gain, which suggests those configs mostly learn the dataset, not the donors.
+- **AIDA 10-donor nulls sit at about 0.7:** unexplained, and noted as a caveat.

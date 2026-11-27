@@ -1,0 +1,125 @@
+{
+  "model": "scGPT whole-human",
+  "source": "Google Drive folder 1oWh_-ZRdhtoGQ2Fw24HP41FgLoomVo-y (bowang-lab/scGPT README, whole-human)",
+  "sha256": "6cb5d451ab5c4b33eb673adbe4fddc61d2389df1b89b7651a9fe2e557572b922",
+  "objective": "generative bin prediction (pretraining objective of this checkpoint)",
+  "gen_frac": 0.25,
+  "n_masks": 3,
+  "mask_seed": 1234,
+  "seed": 0,
+  "batch": 8,
+  "max_epochs": 30,
+  "patience": 3,
+  "lr": {
+    "lora": 0.001,
+    "default": 0.0001
+  },
+  "trial_plan": [
+    [
+      1,
+      [
+        [
+          "head",
+          null
+        ],
+        [
+          "last1",
+          null
+        ],
+        [
+          "last2",
+          null
+        ],
+        [
+          "last4",
+          null
+        ],
+        [
+          "full",
+          null
+        ],
+        [
+          "lora",
+          1
+        ],
+        [
+          "lora",
+          2
+        ],
+        [
+          "lora",
+          4
+        ],
+        [
+          "lora",
+          8
+        ],
+        [
+          "lora",
+          16
+        ],
+        [
+          "lora",
+          32
+        ],
+        [
+          "lora",
+          64
+        ]
+      ]
+    ],
+    [
+      2,
+      [
+        [
+          "head",
+          null
+        ],
+        [
+          "last2",
+          null
+        ],
+        [
+          "full",
+          null
+        ],
+        [
+          "lora",
+          8
+        ],
+        [
+          "lora",
+          64
+        ]
+      ]
+    ],
+    [
+      3,
+      [
+        [
+          "head",
+          null
+        ],
+        [
+          "last2",
+          null
+        ],
+        [
+          "full",
+          null
+        ],
+        [
+          "lora",
+          8
+        ],
+        [
+          "lora",
+          64
+        ]
+      ]
+    ]
+  ],
+  "torch": "2.14.1+cu130",
+  "transformers": "5.20.2",
+  "python": "3.10.22"
+}
