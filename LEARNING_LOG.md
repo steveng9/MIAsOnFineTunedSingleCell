@@ -155,3 +155,9 @@ Running teaching notes, written as the work happens.
 - **LoRA vs freezing:** at equal learning rate, they leak the same for the same parameter budget. The Phase 2-3 "LoRA leaks more" reading was the learning-rate confound.
 - **Head and LoRA utility:** the unrelated-donor null gets most of their utility gain, which suggests those configs mostly learn the dataset, not the donors.
 - **AIDA 10-donor nulls sit at about 0.7:** unexplained, and noted as a caveat.
+
+### scGPT results (2026-11-28)
+- **OneK1K rerun:** positive control at 1e-4 gave seen AUC 1.00, and all nulls passed. The rerun finished at 02:13 UTC.
+- **Main finding:** at 50 donors only full fine-tuning leaks, and only a little (0.59-0.63). Every config, including the null on unrelated donors, reaches the same holdout MSE, so fine-tuning recalibrates the base model rather than learning donors.
+- **Confound to keep in mind:** validation loss plateaus within 1-2 epochs, so early stopping ends runs at 4-17 epochs, while Geneformer often used all 30. A fixed-epoch comparison (say 30 epochs for both models) would separate "the model resists memorization" from "it stopped early".
+- **Trials 2-3 for the 7 non-core configs** are queued after the Geneformer fill (`scripts/launch_fill_scgpt.sh`, tmux `scfm_fill_scgpt`).

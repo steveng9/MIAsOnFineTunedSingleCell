@@ -10,7 +10,7 @@ AUC is donor-level membership-inference AUC (0.5 = chance). "Seen" means the att
 2. **Donor-level leakage (unseen cells) is small.** It is detectable only at 10-20 donors on AIDA (about 0.6 against a null of about 0.47 at 20 donors), and at 50+ donors it is indistinguishable from the null for every config. OneK1K shows none at any size.
 3. **LoRA vs freezing is mostly a learning-rate effect.** At equal learning rate, LoRA and freezing with similar parameter counts leak about the same. The earlier "LoRA leaks more" reading came from LoRA using a 10x higher learning rate (Phase 4 LR check).
 4. **In-context learning is not automatically private** (Phase 5). kNN over member-cell embeddings leaks the seen cells completely (AUC 1.00) while classifying worse than any fine-tuned model. Prototype averaging leaks less, but has the worst utility. As with fine-tuning, no method leaks donor identity through unseen cells.
-5. **scGPT leaks much less than Geneformer under its own objective.** See the Phase 6 section. Its base model is weak, so fine-tuning mostly recalibrates it.
+5. **scGPT barely leaks at 50 donors** (Phase 6). Only full fine-tuning rises above the null (seen AUC 0.63 OneK1K, 0.59 AIDA, against nulls of 0.54 and 0.46). Every config, including the unrelated-donor null, gives the same utility gain, so fine-tuning mostly recalibrates a weak base model. Caveats: scGPT early-stops after 4-17 epochs, and all its donors were in its pretraining data.
 6. **Pretraining overlap:** every donor in both datasets was in scGPT's pretraining corpus. Neither dataset is likely to be in Geneformer V1's. See the pretraining section.
 
 ## Phase 1 pilot
@@ -225,3 +225,51 @@ The protocol asked whether OneK1K and AIDA donors were in the models' pretrainin
 - **Geneformer V1 (Genecorpus-30M):** assembled in 2021 from public data, with sources listed in the Methods of Theodoris et al., Nature 2023 (not checked line by line). AIDA's first public release we found is 2023, and OneK1K's data was published in 2022, so **probably neither is in V1's corpus**. Unverified.
 - **Consequence:** the Geneformer results measure fine-tuning leakage for donors new to the model. The scGPT results measure the extra leakage that fine-tuning adds on top of pretraining. The calibrated score subtracts the base model's loss, so pretraining membership cancels out of it by design. A pretraining-membership attack on the base model needs a never-seen comparison group from the same pipeline, which we don't have.
 - **Prior work:** the protocol cites arXiv:2607.20572 ("Auditing pretraining contamination in single-cell foundation model benchmarks") as the closest work. A web search on 2026-11-27 did not find it. **Steven: please check that citation.**
+
+## Phase 6: scGPT (whole-human)
+
+**Setup:** scGPT whole-human (51.3M parameters), fine-tuned with its own pretraining objective. That objective predicts the expression bins of hidden genes from the visible ones (generative mode; see `LEARNING_LOG.md`), and the per-cell loss is MSE on the hidden bins, with 3 fixed masks and 25% of genes hidden. Same 50-donor cohorts, nulls, and attacks as Geneformer. Trial 1 runs all 12 configs; trials 2-3 run head, last2, full, and LoRA r8 and r64 (trials 2-3 for the rest are queued). Learning rates are 1e-4, or 1e-3 for LoRA, with early stopping (patience 3) on auxiliary donors. Source: `results/metrics_scgpt.csv` (pooled AUCs).
+
+**Controls:**
+- **Positive control** (10 donors, full, 30 epochs at lr 1e-4): seen AUC 1.00 on both datasets, so the attack works when scGPT overfits.
+- **Earlier failure:** the first OneK1K positive control at lr 5e-4 diverged and was rerun; see the learning log.
+- **Nulls:** 0.50-0.59 on OneK1K and 0.45-0.48 on AIDA, all within the stop rule.
+
+### 50 donors, calibrated attack, mean ± SD over 3 trials
+
+| Config | Parameters | OneK1K seen | OneK1K unseen | AIDA seen | AIDA unseen | Holdout MSE OneK1K / AIDA |
+|---|---|---|---|---|---|---|
+| Base | 0 | n/a | n/a | n/a | n/a | 224.7 / 226.3 |
+| Null (unrelated donors) | 50.8M | 0.54±0.05 | 0.53±0.05 | 0.46±0.01 | 0.45±0.06 | 119.3 / 136.8 |
+| Head (decoder) | 526k | 0.55±0.05 | 0.53±0.06 | 0.48±0.02 | 0.46±0.07 | 117.8 / 135.9 |
+| LoRA r8 | 590k | 0.56±0.05 | 0.53±0.07 | 0.51±0.00 | 0.46±0.06 | 117.4 / 135.1 |
+| Last 2 | 3.16M | 0.55±0.05 | 0.53±0.06 | 0.49±0.02 | 0.46±0.07 | 117.6 / 135.6 |
+| LoRA r64 | 4.72M | 0.55±0.05 | 0.53±0.07 | 0.50±0.00 | 0.46±0.07 | 118.2 / 136.4 |
+| Full | 50.8M | 0.63±0.09 | 0.53±0.06 | 0.59±0.03 | 0.46±0.06 | 117.8 / 135.9 |
+
+The trial-1-only configs (last1, last4, LoRA r1/2/4/16/32) are all within 0.52-0.54 seen on OneK1K and 0.47-0.50 on AIDA.
+
+### Reading
+
+- **At 50 donors, scGPT barely leaks.** Only full fine-tuning rises above its null: about +0.09 on OneK1K and +0.13 on AIDA, where the permutation SD is about 0.06. Every other config is indistinguishable from the null. Geneformer at the same size and learning rate gives 1.00 for full and 0.65-0.90 for the rest.
+- **Fine-tuning is almost entirely recalibration.** Every config, *including the null trained on unrelated donors*, cuts holdout MSE from about 225 to 117-119 (OneK1K) or 135-137 (AIDA), and the configs differ by less than 2%. Training on the members teaches scGPT nothing about them that unrelated donors don't.
+- **Training length differs from Geneformer.** Validation loss plateaus after the first epoch or two, so early stopping ends scGPT runs after 4-17 epochs. Geneformer runs often used all 30. So "scGPT leaks less" partly means "scGPT trains for less time before it stops improving". The positive control shows that 30 epochs on 10 donors does make it memorize.
+- **Pretraining:** all these donors were in scGPT's pretraining data (see the pretraining section). The AUCs here measure only what fine-tuning adds on top of that.
+
+### Caveats
+
+- **Weak base model.** Base predictions are nearly constant (Pearson 0.37 with the truth). That might reflect the model, or a mismatch between our preprocessing and scGPT's unpublished pipeline. A better-matched input pipeline could make the base model stronger and change the leakage picture.
+- **Different objective and score scale from Geneformer.** scGPT uses MSE on bins; Geneformer uses cross-entropy on gene ranks. Cross-model comparisons are qualitative.
+- **Pooled AUCs only.** Stratified (within-country or within-pool) scoring has not been run for scGPT.
+
+## Open questions and next ideas
+
+1. **Fixed-epoch scGPT vs Geneformer.** Train both for the same number of epochs (no early stopping) at 50 donors. This separates "scGPT resists memorization" from "scGPT stopped early".
+2. **Why AIDA's null sits at about 0.7 at 10 donors.** Inspect the 10-donor splits for systematic member/holdout differences (age, sex, country mix, cell counts).
+3. **Shadow-model (LiRA-style) attack.** It is in the protocol but not run yet. It could pick up donor-level signal that the calibrated loss misses, especially at 10-20 donors.
+4. **Per-cell-type and subgroup leakage.** Which cell types carry the seen-cell signal? Do AIDA countries or age groups differ?
+5. **Label-only attacks for Phase 5.** The current attacks use class probabilities, which is a strong assumption for a deployed classifier.
+6. **Learning-rate-matched grid.** Rerun LoRA at 3e-4 and head at 3e-4 (their validation-best rates) across donor counts, so cross-family comparisons are fair.
+7. **Pretraining membership.** Pretraining-membership attacks need a never-seen group from the same pipeline. One option: a CELLxGENE dataset published after 2023-05 with matched tissue and chemistry, used as non-members for scGPT. It would still be cross-dataset, so it would need careful batch controls.
+8. **Better scGPT input pipeline.** Try to match scGPT's preprocessing (normalisation, HVG selection, binning) so the base model's predictions are less constant, then rerun one cohort to see if leakage changes.
+9. **HFRA** (third dataset in the protocol) has not been run.
