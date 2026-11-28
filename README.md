@@ -2,7 +2,7 @@
 
 When a single-cell foundation model is fine-tuned on a small donor cohort, does it memorize those donors? This project measures how that changes with the number and shape of the trained parameters, and compares fine-tuning with in-context learning, where no weights change.
 
-**Status (2026-11-27):** Phases 1-6 have run for Geneformer V1 (OneK1K and AIDA, 10-200 donors) and for scGPT (50 donors). The scGPT OneK1K runs are being redone after a failed positive control, and 50-donor sweep settings are being filled to 3 trials (`scripts/launch_fill.sh`, progress in `logs/chain.status`). Headline findings are at the top of RESULTS.md. See [RESULTS.md](RESULTS.md).
+**Status (2026-11-28):** Phases 1-6 are complete for Geneformer V1 (OneK1K and AIDA, 10-200 donors) and scGPT (50 donors), with at least 3 trials per setting. No jobs are running. Headline findings and open questions are in RESULTS.md. See [RESULTS.md](RESULTS.md).
 
 ## Design
 
