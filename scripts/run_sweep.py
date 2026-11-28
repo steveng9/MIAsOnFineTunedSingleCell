@@ -41,9 +41,10 @@ COLUMNS = ["model", "version", "dataset", "nd", "trial", "objective", "config", 
 
 
 class Data:
-    def __init__(self, name):
+    def __init__(self, name, path=None, donor_col="individual"):
         self.name = name
-        self.adata = ad.read_h5ad(os.path.expanduser(f"~/data/scMAMAMIA/{name}/full_dataset_cleaned.h5ad"), backed="r")
+        path = path or f"~/data/scMAMAMIA/{name}/full_dataset_cleaned.h5ad"
+        self.adata = ad.read_h5ad(os.path.expanduser(path), backed="r")
         self.matrix = self.adata.raw.X if self.adata.raw is not None else self.adata.X
         genes = np.asarray(self.adata.raw.var_names if self.adata.raw is not None else self.adata.var_names).astype(str)
         if not genes[0].startswith("ENSG"):
@@ -52,7 +53,7 @@ class Data:
             usable = [g for g in genes if g]
             assert len(usable) == len(set(usable)), "symbol mapping produced duplicate Ensembl IDs"
         self.tok = GeneformerV1Tokenizer(genes)
-        self.donors = self.adata.obs["individual"].astype(str).to_numpy()
+        self.donors = self.adata.obs[donor_col].astype(str).to_numpy()
         self.ctypes = self.adata.obs["cell_type"].astype(str).to_numpy()
 
     def tokenize(self, indices, chunk=256):

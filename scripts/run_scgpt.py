@@ -47,21 +47,24 @@ NULL_STOP_SDS = 4
 # 5e-4 diverged on OneK1K at epoch 20 (loss 121 -> 203, constant predictions); rows archived in
 # results/metrics_scgpt_positive_lr5e-4.csv. 1e-4 matches the main full fine-tune.
 POSITIVE_LR = 1e-4
+TIES = "random"  # tokenizer tie handling; exp_scgpt_v2.py sets "left"
+OUT_TAG = "scgpt"  # subdirectory / prefix for scores, checkpoints, and histories
 CSV = f"{REPO}/results/metrics_scgpt.csv"
 
 
 class ScData:
     """Same interface as run_sweep.Data, with the scGPT tokenizer."""
 
-    def __init__(self, name):
+    def __init__(self, name, path=None, donor_col="individual"):
         self.name = name
-        self.adata = ad.read_h5ad(os.path.expanduser(f"~/data/scMAMAMIA/{name}/full_dataset_cleaned.h5ad"), backed="r")
+        path = path or f"~/data/scMAMAMIA/{name}/full_dataset_cleaned.h5ad"
+        self.adata = ad.read_h5ad(os.path.expanduser(path), backed="r")
         raw = self.adata.raw is not None
         self.matrix = self.adata.raw.X if raw else self.adata.X
         var = self.adata.raw.var if raw else self.adata.var
         names = var["feature_name"].to_numpy() if "feature_name" in var.columns else var.index.to_numpy()
-        self.tok = sm.ScGPTTokenizer(names, seed=SEED)
-        self.donors = self.adata.obs["individual"].astype(str).to_numpy()
+        self.tok = sm.ScGPTTokenizer(names, seed=SEED, ties=TIES)
+        self.donors = self.adata.obs[donor_col].astype(str).to_numpy()
         self.ctypes = self.adata.obs["cell_type"].astype(str).to_numpy()
         print(f"{name}: {len(self.tok.keep):,} genes in the scGPT vocabulary", flush=True)
 
@@ -194,18 +197,18 @@ def run_config(data, c, base_loss, config, rank, csv, smoke, fit_ids=None, label
     rows, _ = p1.attack_rows(meta, c.cells, base_loss, loss, c.ctype, attacks)
     rs.append(csv, rows)
     tag = f"{data.name}_{c.nd}d_t{c.trial}_{label}" + (f"_r{rank}" if rank else "")
-    json.dump(history, open(f"{REPO}/logs/history_scgpt_{'smoke_' if smoke else ''}{tag}.json", "w"))
+    json.dump(history, open(f"{REPO}/logs/history_{OUT_TAG}_{'smoke_' if smoke else ''}{tag}.json", "w"))
     if not smoke:
-        os.makedirs(f"{REPO}/scores/scgpt", exist_ok=True)
+        os.makedirs(f"{REPO}/scores/{OUT_TAG}", exist_ok=True)
         ids = np.array(sorted(loss), dtype=np.int64)
-        np.savez_compressed(f"{REPO}/scores/scgpt/{tag}.npz", cell=ids,
+        np.savez_compressed(f"{REPO}/scores/{OUT_TAG}/{tag}.npz", cell=ids,
                             base=np.array([base_loss[int(x)] for x in ids], dtype=np.float32),
                             loss=np.array([loss[int(x)] for x in ids], dtype=np.float32))
         if config == "lora":
-            os.makedirs(f"{REPO}/checkpoints/scgpt", exist_ok=True)
+            os.makedirs(f"{REPO}/checkpoints/{OUT_TAG}", exist_ok=True)
             torch.save({k: {"A": m.lora_A.detach().cpu(), "B": m.lora_B.detach().cpu()}
                         for k, m in model.named_modules() if isinstance(m, LoRALinear)},
-                       f"{REPO}/checkpoints/scgpt/{tag}.pt")
+                       f"{REPO}/checkpoints/{OUT_TAG}/{tag}.pt")
     summary = {(r["threat_model"], r["attack"]): round(r["auc"], 4) for r in rows if r["aggregation"] == "mean"}
     print(f"scgpt {label} rank={rank}: holdout MSE {utility:.3f} | epochs {len(history)} | "
           f"{time.time() - t0:.0f}s | {summary}", flush=True)

@@ -7,11 +7,12 @@ All numbers below are **preliminary**: few trials (1-5), one training seed per r
 AUC is donor-level membership-inference AUC (0.5 = chance). "Seen" means the attacker holds the exact cells used for fine-tuning; "unseen" means the attacker holds other cells from the same donors.
 
 1. **Exact-cell leakage is large and controlled by cohort size and trained parameters** (Geneformer, Phase 4). Full fine-tuning gives seen AUC 1.00 up to 50 donors and 0.89-0.98 at 200. Head-only falls from 0.96-1.00 at 10 donors to 0.55-0.59 at 200. The ordering full > last2 ≈ LoRA r64 > LoRA r8 > head holds at every size, in both datasets, and survives batch-stratified scoring.
-2. **Donor-level leakage (unseen cells) is small.** It is detectable only at 10-20 donors on AIDA (about 0.6 against a null of about 0.47 at 20 donors), and at 50+ donors it is indistinguishable from the null for every config. OneK1K shows none at any size.
+2. **Donor-level leakage (unseen cells) exists in small cohorts and fades by 50 donors.** Compared with each trial's own null (paired, see the follow-up section), unseen-cell AUC is about +0.13 to +0.18 above the null at 10-20 donors on AIDA (within country) and +0.06 to +0.13 on OneK1K (pooled). It is about the same for every config, including head-only, and falls to +0.01 to +0.05 at 50+ donors. *(Revised 2026-11-28; the earlier reading compared with 0.5 and missed that nulls are overdispersed.)*
 3. **LoRA vs freezing is mostly a learning-rate effect.** At equal learning rate, LoRA and freezing with similar parameter counts leak about the same. The earlier "LoRA leaks more" reading came from LoRA using a 10x higher learning rate (Phase 4 LR check).
 4. **In-context learning is not automatically private** (Phase 5). kNN over member-cell embeddings leaks the seen cells completely (AUC 1.00) while classifying worse than any fine-tuned model. Prototype averaging leaks less, but has the worst utility. As with fine-tuning, no method leaks donor identity through unseen cells.
 5. **scGPT barely leaks at 50 donors** (Phase 6). Only full fine-tuning rises above the null (seen AUC 0.63 OneK1K, 0.59 AIDA, against nulls of 0.54 and 0.46). Every config, including the unrelated-donor null, gives the same utility gain, so fine-tuning mostly recalibrates a weak base model. Caveats: scGPT early-stops after 4-17 epochs, and all its donors were in its pretraining data.
-6. **Pretraining overlap:** every donor in both datasets was in scGPT's pretraining corpus. Neither dataset is likely to be in Geneformer V1's. See the pretraining section.
+6. **Pretraining overlap:** every donor in both datasets was in scGPT's pretraining corpus. Neither dataset is likely to be in Geneformer V1's. Testing pretraining membership directly (AIDA v2 donors scGPT never saw) failed: sequencing batch dominates, even after adjusting for technical covariates. See the follow-up section.
+7. **Our scGPT inputs did not match its pretraining binning** (found 2026-11-28). Tied counts were spread at random instead of sharing a bin. Fixing this raises base-model Pearson from 0.39 to 0.56. The Phase 6 numbers use the old binning, and a rerun with the fix is queued.
 
 ## Phase 1 pilot
 
@@ -298,3 +299,91 @@ The other configs, over 3 trials: last1, last4, and LoRA r1/2/4/16/32 give 0.55-
 7. **Pretraining membership.** Pretraining-membership attacks need a never-seen group from the same pipeline. One option: a CELLxGENE dataset published after 2023-05 with matched tissue and chemistry, used as non-members for scGPT. It would still be cross-dataset, so it would need careful batch controls.
 8. **Better scGPT input pipeline.** Try to match scGPT's preprocessing (normalisation, HVG selection, binning) so the base model's predictions are less constant, then rerun one cohort to see if leakage changes.
 9. **HFRA** (third dataset in the protocol) has not been run.
+
+## Follow-up experiments (started 2026-11-28)
+
+Steven approved the open-questions list. GPU work runs in tmux `scfm_followups` (`scripts/launch_followups.sh`, progress in `logs/chain.status`) in this order: Phase 5 label-only rerun, scGPT with pretraining-matched binning, LiRA at 20 donors, fixed 30 epochs for both models, HFRA, then the learning-rate-matched grid. CPU analyses are done. Sections below are filled in as results arrive.
+
+### Paired comparison with each trial's null (CPU, done)
+
+The nulls are overdispersed. The pooled AIDA null ranges from 0.43 to 0.74 across 10-donor trials and from 0.24 to 0.65 across 20-donor trials, about twice the spread expected from chance. A fixed donor split carries real donor-level differences that any fine-tuned model's score picks up. Comparing each config with **its own trial's null** removes that shared component. Source: `results/followup_paired_null.csv` (from `scripts/analyze_followups.py`).
+
+Unseen cells (same donors, cells not trained on), config AUC minus null AUC, mean ± SE over 5 trials:
+
+| Config | AIDA 10 | AIDA 20 | AIDA 50 | AIDA 100 | AIDA 200 | OneK1K 10 | OneK1K 20 | OneK1K 50 | OneK1K 100 | OneK1K 200 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| full | +0.14±0.03 | +0.14±0.02 | +0.04±0.01 | +0.05±0.02 | +0.04±0.01 | +0.12±0.06 | +0.11±0.01 | +0.04±0.02 | +0.01±0.01 | +0.02±0.01 |
+| last2 | +0.17±0.05 | +0.15±0.03 | +0.01±0.01 | +0.04±0.02 | +0.02±0.01 | +0.11±0.05 | +0.10±0.01 | +0.03±0.02 | +0.00±0.01 | +0.01±0.00 |
+| LoRA r64 | +0.18±0.05 | +0.13±0.03 | +0.01±0.01 | +0.03±0.02 | +0.02±0.01 | +0.13±0.05 | +0.10±0.01 | +0.03±0.02 | +0.00±0.01 | +0.01±0.01 |
+| LoRA r8 | +0.14±0.04 | +0.13±0.04 | +0.01±0.01 | +0.03±0.02 | +0.02±0.01 | +0.09±0.04 | +0.08±0.01 | +0.02±0.02 | +0.00±0.01 | +0.01±0.01 |
+| head | +0.15±0.05 | +0.16±0.03 | +0.01±0.01 | +0.04±0.02 | +0.02±0.01 | +0.06±0.03 | +0.09±0.00 | +0.01±0.02 | +0.01±0.01 | +0.01±0.01 |
+
+AIDA uses the within-country AUC and OneK1K the pooled AUC (OneK1K within-pool values at 10-20 donors rest on 2-4 pairs).
+
+**Reading:**
+- At 10-20 donors, fine-tuning makes a member's *other* cells look more familiar, by about 0.1-0.18 AUC over the null in both datasets.
+- That effect is nearly the same for head-only (92k parameters) as for full fine-tuning (10.3M), while exact-cell leakage differs hugely between them. A plausible reading: donor-level signal comes from a few directions specific to each donor (for example their expression baseline), which even the output layer can learn. Exact-cell memorization needs capacity.
+- From 50 donors on, it is at most +0.05.
+
+**Why the AIDA 10-donor null is high:** per trial it is 0.52, 0.74, 0.43, 0.74, 0.58 (`results/null_diagnostic_10d.csv`, `scripts/diagnose_null_10d.py`). None of the following accounts for it consistently: cell-type composition (type-centering barely changes it), age, cells per donor, or country mix. It is within the overdispersion seen at 20 donors (0.24-0.65), so the paired comparison above is the right correction.
+
+### Which cell types and subgroups leak (CPU, done)
+
+Source: `results/celltype_auc.csv`, `results/subgroup_auc.csv` (`scripts/analyze_celltype_subgroup.py`). Seen-cell calibrated AUC, using only one cell type's cells per donor (at least 5 cells), mean over 5 trials.
+- **Cell types:** leakage is spread across all common types. For last2 at 100 donors, AIDA types range 0.55-0.70 and OneK1K clusters 0.59-0.76. Rarer types (dendritic cells, platelets, OneK1K clusters 9-10) read higher but rest on 14-41 donors. Per-type AUCs are below the all-cell AUC because each uses fewer cells. Nulls per type are 0.45-0.58.
+- **AIDA subgroups** (country, sex, age band <35 / 35-50 / >50): very similar. Full fine-tuning at 200 donors gives 0.84-0.92 in every subgroup, and last2 gives 0.62-0.68. The youngest band is slightly lower (0.84 vs 0.89-0.92 for full). There is no subgroup with markedly higher risk. OneK1K has no donor metadata in the cleaned file.
+
+### Pretraining membership with AIDA v2 (GPU, done: negative result)
+
+**Design:** our local `aida/full_dataset_v2.h5ad` is AIDA Data Freeze v2 (625 donors). It adds 122 donors released after the May 2023 Census that scGPT was pretrained on. Of these, 32 are from Singapore, the same country, assay (10x 5' v2), and study as 186 Singapore v1 donors.
+- **Members:** v1 donors, scored on their v1 cells only (95% of their v2 cells match v1 barcodes after mapping library names).
+- **Non-members:** v2-only donors.
+- **Score:** base-model loss, cell-type centered, averaged per donor (up to 200 cells).
+- **Control:** Geneformer V1 saw neither group, so its AUC measures everything except pretraining membership.
+
+Sources: `results/pretrain_membership.csv`, `results/pretrain_membership_ties_left.csv`, `results/pretrain_membership_adjusted.csv`; scripts `exp_pretrain_membership.py` and `analyze_pretrain_membership.py`.
+
+| Model | Type-centered AUC | Covariate-adjusted AUC | Within-batch AUC (16 pairs) |
+|---|---|---|---|
+| Geneformer V1 (control: saw neither group) | 0.86 | 0.77 | 0.88-0.94 |
+| scGPT, our original binning | 0.11 | 0.30 | 0.31-0.38 |
+| scGPT, pretraining-matched binning | 0.19 | 0.65 | 0.44-0.56 |
+
+Permutation SD about 0.055. Covariates are log total counts, log genes detected, and mitochondrial fraction, regressed within cell type.
+
+**Reading:** the design does not isolate pretraining membership.
+- The control model separates the groups at 0.77-0.86, so v1 and v2-only donors differ technically. Most new donors were sequenced in later batches (B023 and B024), and only one v1 donor shares each of those.
+- scGPT moves in the opposite direction, or near chance after adjustment, depending on binning. The difference-in-differences is not meaningful, because the two models react differently to the batch shift.
+- Only 16 member/non-member pairs share a batch, which is too few.
+
+So we cannot say whether scGPT remembers its pretraining donors. This agrees with the caution in arXiv:2607.20572 that dataset- or batch-level comparisons are confounded.
+
+### scGPT binning mismatch (CPU check, done; rerun queued)
+
+Reading scGPT's pretraining code (`dev-temp` branch: `scgpt/preprocess.py` `binning` → `_digitize(side="one")`, `scgpt/data_collator.py`, `data/cellxgene/process_allcounts.py`) shows two differences from our tokenizer:
+
+1. **Ties.** Pretraining puts tied counts in the upper bin deterministically. Ours spread them at random between bin edges. Most nonzero counts are small and tied (1, 2, 3), so many hidden-bin targets were partly noise.
+2. **`<cls>` value.** Pretraining gives `<cls>` the pad value (-2); we gave it 0.
+
+On 100 AIDA cells (`scripts/test_scgpt_binning.py`), predicting 25% hidden genes:
+
+| Ties | `<cls>` | Truth SD | Per-cell-mean MSE | Model MSE | Pearson | Prediction SD |
+|---|---|---|---|---|---|---|
+| random (Phase 6) | 0 | 14.2 | 202.5 | 224.0 | 0.39 | 1.85 |
+| random | -2 | 14.2 | 202.5 | 224.9 | 0.37 | 1.77 |
+| upper bin (pretraining) | 0 | 5.3 | 26.5 | 43.1 | **0.56** | 1.10 |
+| upper bin (pretraining) | -2 | 5.3 | 26.5 | 44.7 | 0.53 | 1.02 |
+
+The tie handling matters; the `<cls>` value does not.
+- Even with matched binning, the base model predicts nearly constant values and is worse than a per-cell mean. So it remains weak, and some mismatch (or the model itself) is still unexplained.
+- `ScGPTTokenizer` now has `ties="left"` (pretraining-style). The default stays `"random"`, so earlier runs reproduce.
+- `scripts/exp_scgpt_v2.py` reruns the Phase 6 core with matched binning. The fixed-epoch scGPT runs keep the original binning, for comparability with Phase 6.
+
+### Prior work: arXiv:2607.20572
+
+Sarwan Ali (Columbia), July 2026, *"Auditing pretraining contamination in single-cell foundation model benchmarks"*.
+- **Scope:** zero-shot only (no fine-tuning, LoRA, or in-context learning). It asks whether benchmark cells were in pretraining.
+- **Methods:** a MinHash gene-set overlap test against Genecorpus-30M, plus an uncalibrated loss-based attack.
+- **Membership attack:** on Geneformer V1 the natural experiment gives no positive signal. A small model re-pretrained from scratch gives AUROC 0.494, 0.690, and 0.881 for proper, mild, and aggressive overfitting.
+- **Overlap test:** AIDA v2 shows 0% of cells overlapping Genecorpus-30M, which supports our assumption that Geneformer never saw AIDA.
+- **Relation to this project:** distinct. We measure leakage from *fine-tuning* donors, with base-model calibration, at donor level, across trained-parameter budgets, and against in-context learning.

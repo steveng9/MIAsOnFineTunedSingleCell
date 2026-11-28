@@ -138,18 +138,24 @@ class ScGPTTokenizer:
     """Nonzero in-vocabulary genes, binned into 51 levels by within-cell quantiles.
 
     Binning is invariant to per-cell scaling and log1p, so raw counts give the same bins as
-    scGPT's normalize-log-bin pipeline. scGPT breaks ties at random; here the random draws are
-    seeded by cell ID, so a cell always gets the same tokens. Cells with more than 1,199 genes are
+    scGPT's normalize-log-bin pipeline. Tied counts: scGPT pretraining puts them all in the upper
+    bin (ties="left"); ties="random" spreads them between edges, which is what Phase 6 used (an
+    error found 2026-11-28). Random draws are seeded by cell ID, so a cell always gets the same
+    tokens. Cells with more than 1,199 genes are
     subsampled (seeded by cell ID) to fit 1,200 tokens with the <cls> token first.
     """
 
-    def __init__(self, gene_names, n_bins=51, max_len=1200, seed=0):
+    def __init__(self, gene_names, n_bins=51, max_len=1200, seed=0, ties="random"):
         vocab = load_vocab()
         names = np.asarray(gene_names).astype(str)
         dup = set(names[pd_duplicated(names)])
         self.ids = np.array([vocab.get(g, -1) if g not in dup else -1 for g in names], dtype=np.int64)
         self.keep = np.flatnonzero(self.ids >= 0)
         self.n_bins, self.max_len, self.seed = n_bins, max_len, seed
+        # "left" matches scGPT pretraining (preprocess._digitize side="one": ties share the upper bin).
+        # "random" spreads ties between edges; Phases 6 and the fixed-epoch run used it.
+        assert ties in ("random", "left")
+        self.ties = ties
         self.cls_id, self.pad_id = vocab["<cls>"], vocab["<pad>"]
 
     def encode(self, counts, cell_id):
@@ -159,7 +165,8 @@ class ScGPTTokenizer:
         rng = np.random.default_rng([self.seed, int(cell_id)])
         bins = np.quantile(x, np.linspace(0, 1, self.n_bins - 1))
         left, right = np.digitize(x, bins), np.digitize(x, bins, right=True)
-        digits = np.ceil(rng.random(len(x)) * (right - left) + left).astype(np.int8)
+        draws = rng.random(len(x))
+        digits = (left if self.ties == "left" else np.ceil(draws * (right - left) + left)).astype(np.int8)
         genes = self.ids[self.keep[nz]]
         if len(genes) > self.max_len - 1:
             pick = np.sort(rng.choice(len(genes), self.max_len - 1, replace=False))

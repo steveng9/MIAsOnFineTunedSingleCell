@@ -185,6 +185,10 @@ def ce(probs, label, ids):
     return {c: float(-np.log(probs[c][label[c]].item() + 1e-12)) for c in ids}
 
 
+def correct(probs, label, ids):
+    return {c: float(int(probs[c].argmax()) == label[c]) for c in ids}
+
+
 def utility(probs, label, holdout):
     y = np.array([label[c] for c in holdout])
     p = np.array([int(probs[c].argmax()) for c in holdout])
@@ -208,9 +212,9 @@ def attack(meta, members_seen, members_unseen, holdout_map, loss, ref_loss, ctyp
 
 
 def done(dataset, trial, method, k):
-    if not os.path.exists(CSV):
+    if not os.path.exists(CSV_TARGET[0]):
         return False
-    d = pd.read_csv(CSV)
+    d = pd.read_csv(CSV_TARGET[0])
     return len(d[(d.dataset == dataset) & (d.trial == trial) & (d.method == method) & (d.k.astype(str) == str(k))]) > 0
 
 
@@ -264,6 +268,7 @@ def run_cohort(data, trial, smoke):
     for method in ("knn", "proto"):
         ref = dict(zip(query, icl_probs(method, X(ref_ids), Y(ref_ids), X(query), len(classes))))
         ref_loss = ce(ref, label, query)
+        ref_corr = correct(ref, label, query)
         for k, support in supports.items():
             name = f"icl_{method}"
             if not smoke and done(data.name, trial, name, k):
@@ -280,14 +285,16 @@ def run_cohort(data, trial, smoke):
             loss = ce(probs, label, query)
             rows = attack(meta, seen, unseen, holdout_map, loss, ref_loss, c.ctype)
             rs_append(rows or [meta])
-            save_scores(data.name, trial, name, k, loss, ref_loss, smoke)
+            save_scores(data.name, trial, name, k, loss, ref_loss, smoke, correct(probs, label, query), ref_corr)
             summ = {(r["threat_model"], r["attack"]): round(r["auc"], 3) for r in rows if r["aggregation"] == "mean"}
             print(f"  {name} k={k}: F1 {f1:.3f} acc {acc:.3f} | {n_donors} donors | {summ}", flush=True)
 
     # O2 fine-tuning: the reference model is the full config trained on auxiliary donors
     ref_model = Classifier(len(classes), "full", None)
     train_classifier(ref_model, c.seqs, ref_ids, val_ids, label, data.tok.pad_id, LR["default"], SEED)
-    ref_loss = ce(ft_probs(ref_model, c.seqs, query, data.tok.pad_id), label, query)
+    ref_probs = ft_probs(ref_model, c.seqs, query, data.tok.pad_id)
+    ref_loss = ce(ref_probs, label, query)
+    ref_corr = correct(ref_probs, label, query)
     del ref_model
     torch.cuda.empty_cache()
     jobs = [(cfg, r, "all") for cfg, r in FT_ALL] + [(cfg, r, k) for k in KS if k != "all" for cfg, r in FT_FEW]
@@ -316,7 +323,7 @@ def run_cohort(data, trial, smoke):
         loss = ce(probs, label, query)
         rows = attack(meta, seen, unseen, holdout_map, loss, ref_loss, c.ctype)
         rs_append(rows or [meta])
-        save_scores(data.name, trial, name, k, loss, ref_loss, smoke)
+        save_scores(data.name, trial, name, k, loss, ref_loss, smoke, correct(probs, label, query), ref_corr)
         if not smoke and cfg == "lora":
             os.makedirs(f"{REPO}/checkpoints/phase5", exist_ok=True)
             torch.save({n_: {"A": m.lora_A.detach().cpu(), "B": m.lora_B.detach().cpu()}
@@ -330,6 +337,7 @@ def run_cohort(data, trial, smoke):
 
 
 CSV_TARGET = [CSV]
+SCORE_DIR = ["scores/phase5"]
 
 
 def rs_append(rows):
@@ -341,21 +349,28 @@ def rs_append(rows):
     os.replace(f"{path}.tmp", path)
 
 
-def save_scores(name, trial, method, k, loss, ref_loss, smoke):
+def save_scores(name, trial, method, k, loss, ref_loss, smoke, corr=None, ref_corr=None):
     if smoke:
         return
-    os.makedirs(f"{REPO}/scores/phase5", exist_ok=True)
+    os.makedirs(f"{REPO}/{SCORE_DIR[0]}", exist_ok=True)
     ids = np.array(sorted(loss), dtype=np.int64)
-    np.savez_compressed(f"{REPO}/scores/phase5/{name}_{ND}d_t{trial}_{method}_k{k}.npz", cell=ids,
+    extra = {} if corr is None else {"correct": np.array([corr[int(x)] for x in ids], dtype=np.int8),
+                                     "ref_correct": np.array([ref_corr[int(x)] for x in ids], dtype=np.int8)}
+    np.savez_compressed(f"{REPO}/{SCORE_DIR[0]}/{name}_{ND}d_t{trial}_{method}_k{k}.npz", cell=ids,
                         loss=np.array([loss[int(x)] for x in ids], dtype=np.float32),
-                        ref=np.array([ref_loss[int(x)] for x in ids], dtype=np.float32))
+                        ref=np.array([ref_loss[int(x)] for x in ids], dtype=np.float32), **extra)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--rerun", action="store_true",
+                    help="label-only rerun: rows to metrics_phase5_rerun.csv, scores (with correctness) to scores/phase5b")
     args = ap.parse_args()
     torch.manual_seed(SEED)
+    if args.rerun:
+        CSV_TARGET[0] = f"{REPO}/results/metrics_phase5_rerun.csv"
+        SCORE_DIR[0] = "scores/phase5b"
     if args.smoke:
         CSV_TARGET[0] = f"{REPO}/logs/smoke_phase5.csv"
         if os.path.exists(CSV_TARGET[0]):
