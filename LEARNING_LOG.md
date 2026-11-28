@@ -167,3 +167,10 @@ Running teaching notes, written as the work happens.
 - **Geneformer sweep:** with 3 trials both datasets agree within 0.03 for every config, and seen AUC rises smoothly with parameter count.
 - **scGPT sweep:** every non-full config matches the null.
 - **LR check with trial 3:** same best rates as before, and the equal-LR comparison still shows LoRA ≈ freezing. `analyze_phase4.py` now reads trials 1-3 for the LR check.
+
+## Follow-ups (2026-11-28)
+- **Steven's instruction:** go ahead with the open-questions list. 3 trials per setting.
+- **Paired nulls:** comparing each config with its own trial's null shows donor-level (unseen-cell) leakage at 10-20 donors in both datasets, about +0.1-0.18. Comparing with 0.5 had hidden it, because nulls are about twice as variable as chance. **Lesson:** when the null is overdispersed, pair it.
+- **AIDA v2 as a pretraining non-member set:** a good idea that failed on batch. The never-seen donors were sequenced in later batches, and the control model (Geneformer, saw neither) separates the groups at 0.86. **Lesson:** run the "model that saw neither" control before interpreting any membership-by-release-date design.
+- **scGPT binning:** pretraining puts tied counts in the upper bin (`_digitize(side="one")`), while our tokenizer spread them at random. I had read the `side="both"` code path and assumed it was the one used. **Lesson:** trace the exact call in the training collator, not just the helper's options.
+- **Slow code caught:** `np.isin` on hundreds of thousands of Python strings, once per donor, took more than 10 minutes. A set lookup takes seconds.
