@@ -82,6 +82,31 @@ Masked-gene cross-entropy on the 50 holdout donors fell from 2.605 (base) to 2.5
 - AIDA's unseen-cell AUCs sit at 0.416-0.445 for every config, and its unrelated-donor null is 0.406. A model that never saw either group gives the same below-chance value, so this looks like a property of this donor split rather than an effect of training. More trials are needed to confirm that.
 - Because of that offset, AIDA AUCs should be read against its null line as well as against 0.5.
 
+### Update: all 13 configs with 3 trials (2026-11-28)
+
+Trials 2-3 were added for every sweep config (`scripts/fill_trials.py`). The table shows calibrated pooled AUC, mean ± SD over trials 1-3, from `results/metrics.csv`. Learning rates are unchanged: LoRA 1e-3, the rest 1e-4.
+
+| Trained | Parameters | OneK1K seen | OneK1K unseen | AIDA seen | AIDA unseen |
+|---|---|---|---|---|---|
+| Null | 10.3M | 0.52±0.06 | 0.51±0.04 | 0.44±0.04 | 0.43±0.04 |
+| LoRA r=1 | 21.5k | 0.62±0.01 | 0.54±0.02 | 0.62±0.06 | 0.50±0.05 |
+| LoRA r=2 | 43.0k | 0.65±0.01 | 0.55±0.03 | 0.66±0.06 | 0.52±0.07 |
+| LoRA r=4 | 86.0k | 0.69±0.00 | 0.54±0.02 | 0.70±0.06 | 0.51±0.08 |
+| Head | 91.7k | 0.66±0.00 | 0.54±0.03 | 0.66±0.05 | 0.50±0.05 |
+| LoRA r=8 | 172k | 0.74±0.01 | 0.54±0.03 | 0.75±0.07 | 0.50±0.08 |
+| LoRA r=16 | 344k | 0.79±0.01 | 0.55±0.03 | 0.81±0.04 | 0.51±0.08 |
+| Last 1 | 527k | 0.77±0.01 | 0.55±0.03 | 0.78±0.04 | 0.51±0.06 |
+| LoRA r=32 | 688k | 0.83±0.03 | 0.55±0.03 | 0.86±0.02 | 0.50±0.07 |
+| Last 2 | 1.05M | 0.84±0.01 | 0.55±0.04 | 0.85±0.04 | 0.51±0.06 |
+| LoRA r=64 | 1.38M | 0.86±0.02 | 0.55±0.03 | 0.87±0.01 | 0.51±0.06 |
+| Last 4 | 2.11M | 0.91±0.02 | 0.55±0.03 | 0.90±0.02 | 0.51±0.06 |
+| Full | 10.3M | 1.00±0.00 | 0.57±0.04 | 1.00±0.00 | 0.51±0.07 |
+
+**Reading:**
+- With 3 trials, seen AUC rises smoothly with parameter count in both families, and the two datasets now agree closely (within 0.03 for every config).
+- At matched parameter counts LoRA is slightly higher (head 0.66 vs LoRA r4 0.70; last1 0.77-0.78 vs LoRA r32 0.83-0.86). That is consistent with LoRA's 10x higher learning rate. At equal learning rate the gap disappears (Phase 4 LR check).
+- Unseen-cell AUC is flat across configs (0.50-0.57). On AIDA it sits about 0.07 above the pooled null, which is consistent with the country effect on pooled AIDA scores described below.
+
 ## Calibrated-null failure and diagnosis
 
 The replicate queue stopped at AIDA 50 donors, trial 4, because the calibrated null reached AUC 0.629 (seen) and 0.630 (unseen), past the 2 SD gate. Trial 4 for AIDA is incomplete, and trial 5 has not run for either dataset. Sources: `results/null_diagnostic_aida_50d_t4.json` and `results/null_diagnostic_within_country.json`.
@@ -143,18 +168,18 @@ Permutation SD of a single within-stratum AUC: AIDA 0.16, 0.10, 0.06, 0.04, 0.03
 
 The base model scores 2.605 on AIDA and 2.91 on OneK1K. At 200 donors: full 2.439 / 2.701, last2 2.510 / 2.756, head 2.537 / 2.768, LoRA r64 2.536 / 2.798, LoRA r8 2.545 / 2.800 (AIDA / OneK1K). Gains grow with donors for full and last2 and barely move for head and LoRA. The unrelated-donor null model reaches 2.53-2.55 / 2.77-2.79, so **the null alone captures most of the gain of head and LoRA fine-tuning**: much of what they learn is "this kind of data" rather than "these donors".
 
-### Learning-rate check (50 donors, trials 1-2)
+### Learning-rate check (50 donors, trials 1-3)
 
-Best validation loss on auxiliary donors (never holdout) picked these learning rates. For both datasets and both trials: full and last2 at 1e-4, head at 3e-4, and LoRA r8 and r64 at 3e-4. The validation-loss differences between learning rates are small (under 0.01, except full and last2 at 1e-3, which are 0.03-0.08 worse).
+Best mean validation loss on auxiliary donors (never holdout) over 3 trials picked these learning rates, the same in both datasets: full and last2 at 1e-4, head at 3e-4, and LoRA r8 and r64 at 3e-4. The validation-loss differences between learning rates are small (under 0.01, except full and last2 at 1e-3, which are 0.03-0.08 worse).
 
-Seen AUC rises with learning rate for every config. At **equal** learning rate 1e-4, mean of trials 1-2:
+Seen AUC rises with learning rate for every config. At **equal** learning rate 1e-4, mean of trials 1-3 (pooled AUC):
 
 | | OneK1K seen | AIDA seen | Parameters |
 |---|---|---|---|
-| head | 0.66 | 0.64 | 92k |
-| LoRA r8 | 0.67 | 0.67 | 172k |
-| last2 | 0.85 | 0.84 | 1.05M |
-| LoRA r64 | 0.82 | 0.82 | 1.38M |
+| head | 0.66 | 0.66 | 92k |
+| LoRA r8 | 0.67 | 0.68 | 172k |
+| last2 | 0.84 | 0.85 | 1.05M |
+| LoRA r64 | 0.82 | 0.83 | 1.38M |
 
 **Reading:** at matched learning rate and similar parameter counts, LoRA and freezing leak about the same. The Phase 2-3 gap (LoRA higher) was the learning-rate confound flagged there. The grid uses LoRA at 1e-3 and head at 1e-4, neither of which is the validation-best rate, so cross-family comparisons in the grid tables above carry that confound too. Within-family trends are unaffected.
 
@@ -228,7 +253,7 @@ The protocol asked whether OneK1K and AIDA donors were in the models' pretrainin
 
 ## Phase 6: scGPT (whole-human)
 
-**Setup:** scGPT whole-human (51.3M parameters), fine-tuned with its own pretraining objective. That objective predicts the expression bins of hidden genes from the visible ones (generative mode; see `LEARNING_LOG.md`), and the per-cell loss is MSE on the hidden bins, with 3 fixed masks and 25% of genes hidden. Same 50-donor cohorts, nulls, and attacks as Geneformer. Trial 1 runs all 12 configs; trials 2-3 run head, last2, full, and LoRA r8 and r64 (trials 2-3 for the rest are queued). Learning rates are 1e-4, or 1e-3 for LoRA, with early stopping (patience 3) on auxiliary donors. Source: `results/metrics_scgpt.csv` (pooled AUCs).
+**Setup:** scGPT whole-human (51.3M parameters), fine-tuned with its own pretraining objective. That objective predicts the expression bins of hidden genes from the visible ones (generative mode; see `LEARNING_LOG.md`), and the per-cell loss is MSE on the hidden bins, with 3 fixed masks and 25% of genes hidden. Same 50-donor cohorts, nulls, and attacks as Geneformer. All 12 configs have 3 trials (trials 2-3 of last1, last4, and LoRA r1/2/4/16/32 were added on 2026-11-28 by `scripts/fill_trials_scgpt.py`). Learning rates are 1e-4, or 1e-3 for LoRA, with early stopping (patience 3) on auxiliary donors. Source: `results/metrics_scgpt.csv` (pooled AUCs).
 
 **Controls:**
 - **Positive control** (10 donors, full, 30 epochs at lr 1e-4): seen AUC 1.00 on both datasets, so the attack works when scGPT overfits.
@@ -247,7 +272,7 @@ The protocol asked whether OneK1K and AIDA donors were in the models' pretrainin
 | LoRA r64 | 4.72M | 0.55±0.05 | 0.53±0.07 | 0.50±0.00 | 0.46±0.07 | 118.2 / 136.4 |
 | Full | 50.8M | 0.63±0.09 | 0.53±0.06 | 0.59±0.03 | 0.46±0.06 | 117.8 / 135.9 |
 
-The trial-1-only configs (last1, last4, LoRA r1/2/4/16/32) are all within 0.52-0.54 seen on OneK1K and 0.47-0.50 on AIDA.
+The other configs, over 3 trials: last1, last4, and LoRA r1/2/4/16/32 give 0.55-0.57 seen and 0.53 unseen on OneK1K, and 0.48-0.51 seen and 0.46 unseen on AIDA, with holdout MSE 117.1-118.0 / 135.0-135.9. None differs from the null.
 
 ### Reading
 

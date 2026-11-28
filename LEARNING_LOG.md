@@ -161,3 +161,9 @@ Running teaching notes, written as the work happens.
 - **Main finding:** at 50 donors only full fine-tuning leaks, and only a little (0.59-0.63). Every config, including the null on unrelated donors, reaches the same holdout MSE, so fine-tuning recalibrates the base model rather than learning donors.
 - **Confound to keep in mind:** validation loss plateaus within 1-2 epochs, so early stopping ends runs at 4-17 epochs, while Geneformer often used all 30. A fixed-epoch comparison (say 30 epochs for both models) would separate "the model resists memorization" from "it stopped early".
 - **Trials 2-3 for the 7 non-core configs** are queued after the Geneformer fill (`scripts/launch_fill_scgpt.sh`, tmux `scfm_fill_scgpt`).
+
+### Fill to 3 trials done (2026-11-28)
+- **Runs:** the Geneformer fill ran 02:15-12:57 UTC, and the scGPT fill 13:05-17:27. All exited 0, and every setting now has at least 3 trials.
+- **Geneformer sweep:** with 3 trials both datasets agree within 0.03 for every config, and seen AUC rises smoothly with parameter count.
+- **scGPT sweep:** every non-full config matches the null.
+- **LR check with trial 3:** same best rates as before, and the equal-LR comparison still shows LoRA ≈ freezing. `analyze_phase4.py` now reads trials 1-3 for the LR check.

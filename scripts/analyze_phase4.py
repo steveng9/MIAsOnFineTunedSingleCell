@@ -109,7 +109,7 @@ def stratified_rows():
 
 def lr_rows():
     metrics = pd.read_csv(f"{REPO}/results/metrics.csv")
-    sel = metrics[(metrics.nd == 50) & metrics.trial.isin([1, 2]) & (metrics.objective == "O1")
+    sel = metrics[(metrics.nd == 50) & metrics.trial.isin([1, 2, 3]) & (metrics.objective == "O1")
                   & (metrics.attack == "calibrated_loss") & (metrics.aggregation == "mean")]
     rows = []
     for (name, trial, config, rank), g in sel.groupby(["dataset", "trial", "config", "rank"], dropna=False):
